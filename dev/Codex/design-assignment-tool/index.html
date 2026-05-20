@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原価率・粗利算出ツール</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23101415'/%3E%3Cpath d='M5 6.5h14M5 12h10M5 17.5h7' stroke='white' stroke-width='2.2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #f6f8f7;
+      --surface: #ffffff;
+      --surface-strong: #101415;
+      --text: #18201f;
+      --muted: #60716c;
+      --line: #dce5e1;
+      --teal: #0f8f82;
+      --teal-soft: #e4f5f2;
+      --amber: #b7791f;
+      --amber-soft: #fff4d9;
+      --coral: #c94f4f;
+      --coral-soft: #ffe7e4;
+      --blue: #2f6fbd;
+      --blue-soft: #e7f0ff;
+      --shadow: 0 20px 50px rgba(24, 32, 31, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        linear-gradient(180deg, rgba(15, 143, 130, 0.08), rgba(15, 143, 130, 0) 260px),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    .app-shell {
+      width: calc(100% - 32px);
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    .topbar {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--surface-strong);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .panel {
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      padding: 18px 18px 0;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .panel-subtitle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #31413e;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .suffix {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    .suffix {
+      right: 12px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdfc;
+      color: var(--text);
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    input,
+    select {
+      height: 44px;
+      padding: 0 12px;
+    }
+
+    .with-suffix {
+      padding-right: 38px;
+    }
+
+    .money-input.with-suffix {
+      padding-right: 54px;
+    }
+
+    .rate-input.with-suffix {
+      padding-right: 58px;
+    }
+
+    textarea {
+      min-height: 116px;
+      resize: vertical;
+      padding: 12px;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: rgba(15, 143, 130, 0.65);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(15, 143, 130, 0.12);
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #edf3f1;
+    }
+
+    .segmented label {
+      cursor: pointer;
+    }
+
+    .segmented input {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .segmented span {
+      display: grid;
+      min-height: 34px;
+      place-items: center;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .segmented input:checked + span {
+      background: white;
+      color: var(--text);
+      box-shadow: 0 6px 18px rgba(24, 32, 31, 0.08);
+    }
+
+    .category-segmented {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tone-segmented {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 18px 18px;
+    }
+
+    .compact-actions {
+      justify-content: flex-end;
+    }
+
+    .icon-button,
+    .text-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .icon-button {
+      width: 38px;
+      padding: 0;
+    }
+
+    .text-button {
+      padding: 0 12px;
+      font-size: 12px;
+    }
+
+    .icon-button:hover,
+    .text-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(15, 143, 130, 0.45);
+      box-shadow: 0 10px 24px rgba(24, 32, 31, 0.08);
+    }
+
+    .result-panel {
+      overflow: hidden;
+    }
+
+    .decision {
+      padding: 18px;
+      background: var(--surface-strong);
+      color: white;
+    }
+
+    .decision h2 {
+      margin: 0 0 6px;
+      font-size: 27px;
+      line-height: 1.22;
+    }
+
+    .decision p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .meter-wrap {
+      margin-top: 18px;
+    }
+
+    .meter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .meter {
+      position: relative;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--teal);
+      transition: width 220ms ease, background 220ms ease;
+    }
+
+    .meter-target {
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      left: var(--target-rate, 40%);
+      width: 2px;
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1px;
+      background: var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .profit-section {
+      padding: 15px;
+      background: white;
+    }
+
+    .profit-panel {
+      overflow: hidden;
+    }
+
+    .metric {
+      min-height: 92px;
+      padding: 15px;
+      background: white;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 22px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .metric small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .recommendation-body {
+      padding: 16px 18px 18px;
+    }
+
+    .section-title {
+      margin: 0 0 9px;
+      color: #31413e;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .request-amount-output {
+      margin-top: 12px;
+    }
+
+    .metric .request-amount-value {
+      display: block;
+      width: 100%;
+      min-height: 44px;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdfc;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.35;
+      margin-top: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .request-amount-output small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .profit-section span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .profit-section strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 24px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .profit-section small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .profit-section .final-cost-rate-label {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .result-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-shell {
+        width: calc(100% - 22px);
+        padding-top: 18px;
+      }
+
+      .topbar {
+        display: grid;
+      }
+
+      .brand {
+        width: 100%;
+      }
+
+      .brand h1,
+      .brand p,
+      .hint,
+      .decision p {
+        word-break: break-all;
+      }
+
+      .text-button {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .actions .icon-button {
+        width: 38px;
+      }
+
+      .brand h1 {
+        font-size: 20px;
+      }
+
+      .form-grid,
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .decision h2 {
+        font-size: 23px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+            <path d="M5 6.5h14M5 12h10M5 17.5h7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>原価率・粗利算出ツール</h1>
+        </div>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">案件情報</h2>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="budget">案件の予算</label>
+            <div class="input-wrap">
+              <input id="budget" class="with-suffix money-input" type="number" min="0" step="1" value="18" inputmode="decimal">
+              <span class="suffix">万円</span>
+            </div>
+            <div class="hint">クライアントから受ける総額。</div>
+          </div>
+
+          <div class="field">
+            <label for="otherCost">他にかかる原価</label>
+            <div class="input-wrap">
+              <input id="otherCost" class="with-suffix money-input" type="number" min="0" step="1" value="0" inputmode="decimal">
+              <span class="suffix">万円</span>
+            </div>
+            <div class="hint">素材費、撮影費、印刷関連の外部費など。</div>
+          </div>
+
+          <div class="field">
+            <label for="targetRate">原価率上限</label>
+            <div class="input-wrap">
+              <input id="targetRate" class="with-suffix" type="number" min="1" max="100" step="1" value="40" inputmode="numeric">
+              <span class="suffix">%</span>
+            </div>
+            <div class="hint">この割合以下なら業務委託を検討できます。</div>
+          </div>
+
+        </div>
+      </div>
+
+      <aside class="panel result-panel">
+        <div class="decision" id="decisionBlock">
+          <h2 id="decisionTitle">業務委託へ依頼</h2>
+          <p id="decisionReason">時給と工数をもとに、依頼金額を表示します。</p>
+          <div class="meter-wrap">
+            <div class="meter-row">
+              <span>原価率</span>
+              <span id="ratioText">0%</span>
+            </div>
+            <div class="meter" aria-hidden="true">
+              <div class="meter-fill" id="meterFill"></div>
+              <div class="meter-target"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <span id="maxCostLabel">原価残高</span>
+            <strong id="maxCostText">¥0</strong>
+            <small id="remainingFormula">¥0 - ¥0 = ¥0</small>
+          </div>
+          <div class="metric">
+            <span>時給</span>
+            <div class="input-wrap">
+              <input id="hourlyRate" class="with-suffix rate-input" type="number" min="0" step="500" value="3000" inputmode="numeric">
+              <span class="suffix">円/h</span>
+            </div>
+            <div class="request-amount-output">
+              <span>工数</span>
+              <div class="input-wrap">
+                <input id="workHours" class="with-suffix hours-input" type="number" min="0" step="1" value="10" inputmode="numeric">
+                <span class="suffix">h</span>
+              </div>
+              <span>依頼金額</span>
+              <strong class="request-amount-value" id="requestAmountText">¥0</strong>
+              <small id="requestAmountFormula">¥0/h × 0h = ¥0</small>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <aside class="panel profit-panel">
+        <div class="profit-section">
+          <span>粗利</span>
+          <strong id="grossProfitText">¥0</strong>
+          <small id="grossProfitFormula">¥0 - ¥0 - ¥0 = ¥0</small>
+          <span class="final-cost-rate-label">最終原価率</span>
+          <strong id="finalCostRateText">0%</strong>
+          <small id="finalCostRateFormula">100% - (¥0 ÷ ¥0 × 100) = 0%</small>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const CHEAP_PROJECT_LINE = 200000;
+
+    const els = {
+      budget: document.querySelector("#budget"),
+      targetRate: document.querySelector("#targetRate"),
+      otherCost: document.querySelector("#otherCost"),
+      hourlyRate: document.querySelector("#hourlyRate"),
+      workHours: document.querySelector("#workHours"),
+      decisionBlock: document.querySelector("#decisionBlock"),
+      decisionTitle: document.querySelector("#decisionTitle"),
+      decisionReason: document.querySelector("#decisionReason"),
+      ratioText: document.querySelector("#ratioText"),
+      meterFill: document.querySelector("#meterFill"),
+      maxCostLabel: document.querySelector("#maxCostLabel"),
+      maxCostText: document.querySelector("#maxCostText"),
+      remainingFormula: document.querySelector("#remainingFormula"),
+      requestAmountText: document.querySelector("#requestAmountText"),
+      requestAmountFormula: document.querySelector("#requestAmountFormula"),
+      grossProfitText: document.querySelector("#grossProfitText"),
+      grossProfitFormula: document.querySelector("#grossProfitFormula"),
+      finalCostRateText: document.querySelector("#finalCostRateText"),
+      finalCostRateFormula: document.querySelector("#finalCostRateFormula")
+    };
+
+    function yen(value) {
+      return new Intl.NumberFormat("ja-JP", {
+        style: "currency",
+        currency: "JPY",
+        maximumFractionDigits: 0
+      }).format(Math.max(0, Math.round(value || 0)));
+    }
+
+    function yenSigned(value) {
+      return new Intl.NumberFormat("ja-JP", {
+        style: "currency",
+        currency: "JPY",
+        maximumFractionDigits: 0
+      }).format(Math.round(value || 0));
+    }
+
+    function cleanMoneyNumber(value) {
+      const cleaned = String(value || "").replace(/[^\d.]/g, "");
+      const parts = cleaned.split(".");
+      return parts.length > 1 ? `${parts[0]}.${parts.slice(1).join("")}` : cleaned;
+    }
+
+    function moneyValue(el) {
+      return Math.max(0, Number(cleanMoneyNumber(el.value) || 0)) * 10000;
+    }
+
+    function rateValue(el) {
+      return Math.max(0, Number(cleanMoneyNumber(el.value) || 0));
+    }
+
+    function hoursValue(el) {
+      return Math.max(0, Number(cleanMoneyNumber(el.value) || 0));
+    }
+
+    function formatHours(value) {
+      const rounded = Math.max(0, Math.round((value || 0) * 10) / 10);
+      return rounded.toFixed(rounded % 1 ? 1 : 0);
+    }
+
+    function estimate() {
+      const budget = moneyValue(els.budget);
+      const cheapLine = CHEAP_PROJECT_LINE;
+      const targetRate = Math.min(100, Math.max(1, Number(els.targetRate.value || 40)));
+      const otherCost = moneyValue(els.otherCost);
+      const totalCost = otherCost;
+      const ratio = budget > 0 ? (totalCost / budget) * 100 : 0;
+      const maxCost = budget * (targetRate / 100);
+      const remaining = budget - otherCost;
+      const amountLimit = Math.max(0, remaining);
+      const hourlyRate = rateValue(els.hourlyRate);
+      const workHours = hoursValue(els.workHours);
+      const requestAmount = hourlyRate * workHours;
+      const grossProfit = budget - otherCost - requestAmount;
+      const grossProfitRate = budget > 0 ? (grossProfit / budget) * 100 : 0;
+      const finalCostRate = budget > 0 ? 100 - grossProfitRate : 0;
+      const cheap = budget > 0 && budget <= cheapLine;
+      const overTarget = budget > 0 && ratio > targetRate;
+
+      return {
+        budget,
+        cheapLine,
+        targetRate,
+        otherCost,
+        totalCost,
+        ratio,
+        maxCost,
+        remaining,
+        amountLimit,
+        hourlyRate,
+        workHours,
+        requestAmount,
+        grossProfit,
+        grossProfitRate,
+        finalCostRate,
+        cheap,
+        overTarget
+      };
+    }
+
+    function decisionFor(data) {
+      if (data.budget <= 0) {
+        return {
+          title: "予算を入力してください",
+          tone: "neutral",
+          reason: "案件の予算が入ると、原価率と担当推奨を自動で表示します。",
+        };
+      }
+
+      if (data.cheap) {
+        return {
+          title: "鍵本が担当",
+          tone: "warning",
+          reason: "予算が少額案件の基準内です。外注管理コストも含めると、鍵本さんが直接対応する判断が堅いです。",
+        };
+      }
+
+      if (data.overTarget) {
+        return {
+          title: "鍵本が担当、または原価調整",
+          tone: "danger",
+          reason: `原価率が${data.ratio.toFixed(1)}%で、目標の${data.targetRate}%を超えています。外注するなら、他にかかる原価か依頼範囲を調整してください。`,
+        };
+      }
+
+      return {
+        title: "業務委託へ依頼",
+        tone: "good",
+        reason: `原価率が${data.ratio.toFixed(1)}%で${data.targetRate}%以内です。時給と工数から依頼金額を確認できます。`,
+      };
+    }
+
+    function setTone(tone) {
+      const colors = {
+        good: "var(--teal)",
+        warning: "var(--amber)",
+        danger: "var(--coral)",
+        neutral: "var(--blue)"
+      };
+      els.meterFill.style.background = colors[tone] || colors.neutral;
+    }
+
+    function render() {
+      const data = estimate();
+      const decision = decisionFor(data);
+      const ratioWidth = Math.min(100, Math.max(0, data.ratio));
+
+      els.decisionTitle.textContent = decision.title;
+      els.decisionReason.textContent = decision.reason;
+      els.ratioText.textContent = `${data.ratio.toFixed(1)}%`;
+      els.meterFill.style.width = `${ratioWidth}%`;
+      document.documentElement.style.setProperty("--target-rate", `${data.targetRate}%`);
+      els.maxCostText.textContent = yenSigned(data.remaining);
+      els.maxCostLabel.textContent = "原価残高";
+      els.remainingFormula.textContent = `${yenSigned(data.budget)} - ${yen(data.otherCost)} = ${yenSigned(data.remaining)}`;
+      els.requestAmountText.textContent = yen(data.requestAmount);
+      els.requestAmountFormula.textContent =
+        `${yen(data.hourlyRate)}/h × ${formatHours(data.workHours)}h = ${yen(data.requestAmount)}`;
+      els.grossProfitText.textContent = yenSigned(data.grossProfit);
+      els.grossProfitFormula.textContent =
+        `${yenSigned(data.budget)} - ${yen(data.otherCost)} - ${yen(data.requestAmount)} = ${yenSigned(data.grossProfit)}`;
+      els.finalCostRateText.textContent = `${data.finalCostRate.toFixed(1)}%`;
+      els.finalCostRateFormula.textContent =
+        `100% - (${yenSigned(data.grossProfit)} ÷ ${yenSigned(data.budget)} × 100) = ${data.finalCostRate.toFixed(1)}%`;
+
+      setTone(decision.tone);
+    }
+
+    document.querySelectorAll(".money-input").forEach(el => {
+      el.addEventListener("input", render);
+      el.addEventListener("blur", () => {
+        if (el.value === "") {
+          el.value = "0";
+        }
+        render();
+      });
+    });
+
+    document.querySelectorAll(".rate-input").forEach(el => {
+      el.addEventListener("input", render);
+      el.addEventListener("blur", () => {
+        if (el.value === "") {
+          el.value = "0";
+        }
+        render();
+      });
+    });
+
+    document.querySelectorAll(".hours-input").forEach(el => {
+      el.addEventListener("input", render);
+      el.addEventListener("blur", () => {
+        if (el.value === "") {
+          el.value = "0";
+        }
+        render();
+      });
+    });
+
+    document.querySelectorAll("input:not(.money-input):not(.rate-input):not(.hours-input), select").forEach(el => {
+      el.addEventListener("input", render);
+      el.addEventListener("change", render);
+    });
+
+    render();
+  </script>
+</body>
+</html>
